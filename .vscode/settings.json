@@ -1,0 +1,8 @@
+{
+  "files.associations": {
+    "initializer_list": "c",
+    "utility": "c",
+    "vector": "c",
+    "xutility": "c"
+  }
+}
