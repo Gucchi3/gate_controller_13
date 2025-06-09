@@ -401,13 +401,6 @@ def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model  = NETWORK.to(device) 
 
-    # ネットワーク構造表示
-    if SHOW_SUMMAR == 1 or SHOW_SUMMAR == '1':
-        if TORCHINFO_AVAILABLE:
-            print("\n--- ネットワーク構造 summary ---")
-            summary(model, input_size=(1, 1, INPUT_SIZE[0], INPUT_SIZE[1]), device=str(device))
-        else:
-            print("torchinfoがインストールされていません。\n pip install torchinfo でインストールしてください。\n")
 
     if mode == '1':
         metric_epochs   = []   # ← 追加: 評価したエポックを記録
