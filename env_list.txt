@@ -18,6 +18,20 @@ conda install tqdm=4.67.1
 
 #---------------------------------
 
+#---------------------------------
+#　vscode拡張機能他
+#---------------------------------
+Better Comments　←入れて下さい
+
+Evondev-Indnet Rainbow Palettes ←おすすめ
+Error Lens ←おすすめ
+indent-randbow　←おすすめ
+
+#---------------------------------
+
+
+
+
 以下stable環境詳細
 
 
