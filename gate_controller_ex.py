@@ -6,9 +6,6 @@
 #!　修正すべき事項
 #!---------------------------------------------------------------------------------------
 def syuusei():
-    #!LabelMeCornrtDataset　の　画像左右反転
-    #?４point推論では、画像左右反転ではそれぞれの点の位置関係を守るために、left, rightは判定させてはならない。
-    #*画像左右反転でleft, rightをそのままにする。
 
     #!LabelMeCornrtDataset　の　画像回転
     #?画像回転で画像は開店するが、ポイントが上手く回転してない。
@@ -172,7 +169,9 @@ class LabelMeCornerDataset(Dataset):
                     img = img.transpose(Image.FLIP_LEFT_RIGHT)  # --- 画像の反転 ---
                     pts[:, 0] = w0 - 1 - pts[:, 0]  # --- w0 には 160 が格納されている。画像は 0~159 のため、w0 -1 -pts で反転 ---
                     # ラベル順序も反転（top, right, left, bottom → top, left, right, bottom）
-                    pts[[1, 2]] = pts[[2, 1]]
+                    pts[[1, 3]] = pts[[3, 1]]
+                    #* 20250609 
+    
 
                 #? 2. 拡大縮小
                 if random.random() < SCALE_PROB:
