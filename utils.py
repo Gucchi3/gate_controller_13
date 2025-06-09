@@ -25,7 +25,7 @@ import numpy as np
 # Configurable Parameters
 # ----------------------------
 # gate_controller.py から設定値をインポート
-from config_ex import (
+from config import (
     PARENT_DIR, IMG_DIR, DATASET_DIR, JSON_DIR, OUT_DIR, IMG_OUT_DIR, INPUT_SIZE, BATCH_SIZE, LEARNING_RATE, EPOCHS, EVAL_PERIOD, NUM_WORKERS, DIST_THRESH, PRED_CKPT,
     HEATMAP_CMAP, HEATMAP_IMG_CMAP, FEATUREMAP_CMAP, POINT_ERROR_COLORS,POINT_LABEL
 )

@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from config_ex import NUM_OUTPUTS
+from config import NUM_OUTPUTS
 
 
 class net1_ex(nn.Module):

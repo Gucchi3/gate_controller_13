@@ -38,15 +38,15 @@ from tqdm import tqdm
 import numpy as np
 from torchinfo import summary
 
-from config_ex import (
+from config import (
     PARENT_DIR, IMG_DIR, DATASET_DIR, JSON_DIR, OUT_DIR, IMG_OUT_DIR, INPUT_SIZE, BATCH_SIZE, LEARNING_RATE, EPOCHS, EVAL_PERIOD, NUM_WORKERS, DIST_THRESH, PRED_CKPT,
     HEATMAP_CMAP, HEATMAP_IMG_CMAP, FEATUREMAP_CMAP, MEAN_ERROR_CURVE_COLOR, POINT_ERROR_COLORS,SHOW_SUMMAR,
     AUGMENTATION_ENABLED, FLIP_PROB, ROTATE_PROB, ROTATE_DEGREE, SCALE_PROB, SCALE_RANGE,
     SAVE_INPUT_IMG, INPUT_IMG_DIR,
     CONTRAST_PROB, CONTRAST_RANGE, BRIGHTNESS_PROB, BRIGHTNESS_RANGE, SHARPNESS_PROB, SHARPNESS_RANGE,POINT_LABEL
 )
-from utils_ex import split_dataset, mean_error, max_error, accuracy_at_threshold, plot_heatmap, plot_heatmap_for_image, plot_metric_curve, predict_with_features, save_all_fmap, predict_and_plot,worker_init_fn,yolo_dataset_collate
-from nets.net1_ex import net1_ex
+from utils import split_dataset, mean_error, max_error, accuracy_at_threshold, plot_heatmap, plot_heatmap_for_image, plot_metric_curve, predict_with_features, save_all_fmap, predict_and_plot,worker_init_fn,yolo_dataset_collate
+from nets.net1 import net1_ex
 
 input_size = INPUT_SIZE[0]
 
@@ -319,7 +319,7 @@ def train_one_epoch(model, loader, optimizer, device, writer, epoch):
     model.train()
     running_loss = 0.0
     img_save_count = 0
-    from config_ex import GATE_EXIST_LOSS_WEIGHT
+    from config import GATE_EXIST_LOSS_WEIGHT
     for imgs, targets, masks, gate_exists in tqdm(loader, desc=f"Epoch {epoch} Train", leave=False):
         imgs, targets, masks, gate_exists = imgs.to(device), targets.to(device), masks.to(device), gate_exists.to(device)
         out = model(imgs)  # [B, 9]
@@ -356,7 +356,7 @@ def validate(model, loader, device, writer, epoch, tag='val'):
     global input_size
     model.eval()
     running_loss = 0.0
-    from config_ex import GATE_EXIST_LOSS_WEIGHT
+    from config import GATE_EXIST_LOSS_WEIGHT
     with torch.no_grad():
         for imgs, targets, masks, gate_exists in tqdm(loader, desc=f"{tag} {epoch}", leave=False):
             imgs, targets, masks, gate_exists = imgs.to(device), targets.to(device), masks.to(device), gate_exists.to(device)
@@ -697,7 +697,7 @@ def main():
     elif mode == '4':
         # 4番: カメラライブ推論
         model.load_state_dict(torch.load(PRED_CKPT, map_location=device, weights_only=True))
-        from utils_ex import predict_from_camera
+        from utils import predict_from_camera
         predict_from_camera(model, device, OUT_DIR)
 
     elif mode == '5':
