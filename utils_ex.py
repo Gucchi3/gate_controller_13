@@ -85,6 +85,7 @@ def accuracy_at_threshold(errors, threshold):
 #? 任意のメトリクス値の推移をグラフ化し保存する
 # 入力: metric_values(list[float]), ylabel(str), out_path(str)
 # 出力: 画像ファイル(str)
+#!--今使われてない--
 def plot_metric_curve(metric_values, ylabel, out_path):
     plt.figure()
     plt.plot(metric_values, marker='o')
