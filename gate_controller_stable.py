@@ -510,7 +510,7 @@ def main():
             # ==============================
             return 0
         
-        optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)#!--optimizerはAdamを使用してる--!#
+        optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)#--optimizerはAdamを使用してる--#
         writer    = SummaryWriter(log_dir=session_dir)
         best_val  = float('inf')
 
@@ -720,12 +720,12 @@ def main():
 #?----------------------------------------------------------------------------------------
 #?ログ設定
 #?----------------------------------------------------------------------------------------
-os.makedirs('logs', exist_ok=True)
+os.makedirs('log/logs', exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s %(levelname)s %(message)s',
     handlers=[
-        logging.FileHandler('logs/train.log'),
+        logging.FileHandler('log/logs/train.log'),
         logging.StreamHandler()
     ]
 )
