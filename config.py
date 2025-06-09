@@ -42,8 +42,7 @@ SHARPNESS_RANGE = (0.6, 1.4) # シャープネス倍率範囲
 # 入力画像保存のON/OFFと保存先ディレクトリ
 SAVE_INPUT_IMG = True  # Trueで保存、Falseで保存しない
 INPUT_IMG_DIR = r'log/input_img'  # 保存先ディレクトリ名
-# 出力次元数（座標2×点数＋ゲート存在判定1）
-NUM_OUTPUTS = len(POINT_LABEL)*2 + 1
+
 # ゲート存在判定の損失重み
 GATE_EXIST_LOSS_WEIGHT = 1.0  # 必要に応じて調整
 # ゲート存在判定の閾値
