@@ -23,7 +23,7 @@ FEATUREMAP_CMAP = 'gray' # 特徴マップ可視化用カラーマップ
 MEAN_ERROR_CURVE_COLOR = "#5ea6ff"  # パステルブルー
 POINT_ERROR_COLORS = ["#fd5162",  "#64f884",  "#fab662",  "#b964ff" ]
 POINT_LABEL = ["1", "2", "3", "4"]
-SHOW_SUMMAR = 0 #ネットワーク構造を出力するか
+SHOW_SUMMAR = 1 #ネットワーク構造を出力するか
 
 # augmentations全体のON/OFF
 AUGMENTATION_ENABLED =True

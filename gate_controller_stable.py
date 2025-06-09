@@ -36,6 +36,7 @@ from torch.utils.tensorboard import SummaryWriter
 import torchvision.transforms as T
 from tqdm import tqdm
 import numpy as np
+from torchinfo import summary
 
 from config_ex import (
     PARENT_DIR, IMG_DIR, DATASET_DIR, JSON_DIR, OUT_DIR, IMG_OUT_DIR, INPUT_SIZE, BATCH_SIZE, LEARNING_RATE, EPOCHS, EVAL_PERIOD, NUM_WORKERS, DIST_THRESH, PRED_CKPT,
@@ -400,6 +401,10 @@ def main():
     os.makedirs(OUT_DIR, exist_ok=True)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model  = NETWORK.to(device) 
+
+    if SHOW_SUMMAR == 1:
+        if __name__ == '__main__':
+            summary(model, input_size=(1, 1, 160, 160), device=device)
 
 
     if mode == '1':

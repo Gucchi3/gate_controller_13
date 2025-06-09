@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from config_ex import NUM_OUTPUTS
-# from torchinfo import summary
+
 
 class net1_ex(nn.Module):
     def __init__(self):
@@ -87,6 +87,4 @@ class net1_ex(nn.Module):
         return out
         
 
-# if __name__ == '__main__':
-#     model = net1_ex()
-#     summary(model, input_size=(1, 1, 160, 160), device='cpu')
+
