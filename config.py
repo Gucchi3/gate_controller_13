@@ -28,11 +28,11 @@ SHOW_SUMMAR = 1 #ネットワーク構造を出力するか
 # augmentations全体のON/OFF
 AUGMENTATION_ENABLED =True
 # 画像変換パラメータ
-FLIP_PROB = 0         # 左右反転の確率
+FLIP_PROB = 0.5         # 左右反転の確率
 ROTATE_PROB = 0       # ランダム回転の確率
 ROTATE_DEGREE = 15      # 回転角度の最大値（±）
 SCALE_PROB = 0.6        # 拡大縮小の確率
-SCALE_RANGE = (0.5,1.2) # 拡大縮小の倍率範囲（min, max）
+SCALE_RANGE = (0.4,1.2) # 拡大縮小の倍率範囲（min, max）
 CONTRAST_PROB = 0.5     # コントラスト変換の確率
 CONTRAST_RANGE = (0.6, 1.4) # コントラスト倍率範囲
 BRIGHTNESS_PROB = 0.5   # 明るさ変換の確率
