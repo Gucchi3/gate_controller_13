@@ -4,3 +4,4 @@ logs/*
 img/*
 img_out/*
 logs/*
+nets/__pycache__/*
