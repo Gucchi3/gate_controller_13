@@ -385,7 +385,6 @@ def main():
 5. export_onnx   : モデルONNXエクスポートのみ
 ==================
 """)
-    # show_summary = input("ネットワーク構造を表示しますか？ (1:表示 0:表示しない): ").strip()
     mode = input("番号を入力してください (1-5): ").strip()
     # --- 学習開始時刻のサブフォルダ作成 ---
     if mode == '1':
@@ -404,8 +403,8 @@ def main():
 
 
     if mode == '1':
-        metric_epochs   = []   # ← 追加: 評価したエポックを記録
-        mean_err_values = []   # ← 追加: 各エポックの mean_err を記録
+        metric_epochs   = []   
+        mean_err_values = []   
         point_err_history = {lbl: [] for lbl in REQUIRED_LABELS}  # 各点のエポックごとの誤差推移
         train_js, val_js, test_js = split_dataset(JSON_DIR)
         train_dataset = LabelMeCornerDataset(train_js, DATASET_DIR, is_train=True)
