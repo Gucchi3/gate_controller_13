@@ -82,20 +82,6 @@ def accuracy_at_threshold(errors, threshold):
     errors = np.array(errors)
     return np.mean(errors < threshold) if len(errors) > 0 else 0.0
 
-#? 任意のメトリクス値の推移をグラフ化し保存する
-# 入力: metric_values(list[float]), ylabel(str), out_path(str)
-# 出力: 画像ファイル(str)
-#!--今使われてない--
-def plot_metric_curve(metric_values, ylabel, out_path):
-    plt.figure()
-    plt.plot(metric_values, marker='o')
-    plt.xlabel('Sample')
-    plt.ylabel(ylabel)
-    plt.title(ylabel)
-    plt.grid(True)
-    plt.tight_layout()
-    plt.savefig(out_path)
-    plt.close()
 
 #? 各点ごとの平均誤差をヒートマップ画像として保存する
 # 入力: model(torch.nn.Module), loader(torch.utils.data.DataLoader), device(str|torch.device), session_dir(str)
