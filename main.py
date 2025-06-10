@@ -35,7 +35,7 @@ from config import (
     SAVE_INPUT_IMG, INPUT_IMG_DIR,
     CONTRAST_PROB, CONTRAST_RANGE, BRIGHTNESS_PROB, BRIGHTNESS_RANGE, SHARPNESS_PROB, SHARPNESS_RANGE,POINT_LABEL
 )
-from utils import split_dataset, mean_error, max_error, accuracy_at_threshold, plot_heatmap, plot_heatmap_for_image, plot_metric_curve, predict_with_features, save_all_fmap, predict_and_plot,worker_init_fn,yolo_dataset_collate
+from utils import split_dataset, mean_error, max_error, accuracy_at_threshold, plot_heatmap, plot_heatmap_for_image,  predict_with_features, save_all_fmap, predict_and_plot,worker_init_fn,yolo_dataset_collate
 from nets.net1 import net1_ex
 
 input_size = INPUT_SIZE[0]
