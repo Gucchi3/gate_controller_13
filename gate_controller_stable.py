@@ -22,6 +22,7 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 import random
 import json
 import logging
+import math
 from glob import glob
 from PIL import Image, ImageDraw
 import matplotlib.pyplot as plt
@@ -172,7 +173,6 @@ class LabelMeCornerDataset(Dataset):
                     # ラベル順序も反転（top, right, left, bottom → top, left, right, bottom）
                     pts[[1, 3]] = pts[[3, 1]]
                     #* 20250609 
-    
 
                 #? 2. 拡大縮小
                 if random.random() < SCALE_PROB:
@@ -213,23 +213,30 @@ class LabelMeCornerDataset(Dataset):
                         pts = pts + [left, upper]  # アノテーションをシフト
 
                         # 縮小配置の場合、画像外に出ることは無いのでマスク更新不要
-
+                
                 #? 3. ランダム回転
                 if random.random() < ROTATE_PROB:
                     angle = random.uniform(-ROTATE_DEGREE, ROTATE_DEGREE)  # 回転角をランダムに決定
                     img = img.rotate(angle, resample=Image.BILINEAR)  # 画像回転、バイリニア補完
+                    #!==Pillowは画像の左上を中心として、Θ>0の時に「「「時計回り」」」に回転する。
+                            #!===しかし、Pillowではなく数学的に回転させると、画像の左下を中心として、「「「反時計回り」」」に回転する。
+                                #!===よって、Pillowと数学的回転では回転方向が違うため、angleに×(-1)をかけて逆方向の角度を指定しなければならない。
                     # 座標も回転
                     cx, cy = w0 / 2, h0 / 2
-                    theta = np.deg2rad(angle)
-                    rot_mat = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]], dtype=np.float32)
-                    pts = pts - [cx, cy]
-                    pts = np.dot(pts, rot_mat.T)  # 行列計算
-                    pts = pts + [cx, cy]
-                    oob = (pts[:, 0] < 0) | (pts[:, 0] >= w0) | (pts[:, 1] < 0) | (pts[:, 1] >= h0)
-                    mask_np = np.array(mask, dtype=np.float32).reshape(-1, 2)
-                    mask_np[oob, :] = 0.0
-                    mask = mask_np.flatten().tolist()
+                    angle_r = math.radians(-angle)#!×(-1)に注意!!!
+                    #print(f"angle：{angle}　　angle_rad：{angle_r}") #DEBUG
+                    x0 = pts[:, 0] - cx
+                    y0 = pts[:, 1] - cy
+                    pts[:, 0] =  cx +(x0)*math.cos(angle_r) - (y0)*math.sin(angle_r)
+                    pts[:, 1] = cy + (x0)*math.sin(angle_r) + (y0)*math.cos(angle_r)
 
+                    # for i ,(x, y) in enumerate(pts): #maskは__getitemの最後で定義してた(*´ω｀*)
+                    #     if x < 0 or input_size <= x:
+                    #         mask[i, 0] = 0
+                    #     if y < 0 or input_size <= y:(*´ω｀*)
+                    #         mask[i, 1] = 0
+                        
+                
                 #? 4. コントラスト変換
                 if random.random() < CONTRAST_PROB:
                     from PIL import ImageEnhance
