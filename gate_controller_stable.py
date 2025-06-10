@@ -7,9 +7,7 @@
 #!---------------------------------------------------------------------------------------
 def syuusei():
 
-    #!LabelMeCornrtDataset　の　画像回転
-    #?画像回転で画像は開店するが、ポイントが上手く回転してない。
-    #*４pointが回転するように調整する。
+
 
 
     return 0
@@ -236,7 +234,7 @@ class LabelMeCornerDataset(Dataset):
                     #     if y < 0 or input_size <= y:(*´ω｀*)
                     #         mask[i, 1] = 0
                         
-                
+
                 #? 4. コントラスト変換
                 if random.random() < CONTRAST_PROB:
                     from PIL import ImageEnhance
