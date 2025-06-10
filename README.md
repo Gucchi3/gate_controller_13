@@ -30,16 +30,16 @@ conda activate gate
 conda install pytorch==2.4.0 torchvision==0.19.0 torchaudio==2.4.0 pytorch-cuda=12.4 -c pytorch -c nvidia
 conda install matplotlib=3.9.2
 conda install onnx=1.17.0
-pip install onnx-graphsurgeon==0.5.8
-pip install opencv-python==4.11.0.86
 conda install pillow=11.0.0
 conda install scikit-learn=1.6.1
 conda install seaborn=0.13.2
 conda install tensorboard=2.19.0
-pip install thop==0.1.1-2209072238
 conda install tqdm=4.67.1
-pip install torchinfo==1.8.0
 
+pip install thop==0.1.1-2209072238
+pip install torchinfo==1.8.0
+pip install onnx-graphsurgeon==0.5.8
+pip install opencv-python==4.11.0.86
 
 #---------------------------------
 
