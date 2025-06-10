@@ -1,3 +1,22 @@
+# 修正待ち事項
+    なし
+# 追加予定機能
+    画像拡張機能に　「せん断」　の追加。
+    画像拡張機能に　「ノイズ」　の追加。
+    画像拡張機能に　「ブラー」　の追加。
+    画像拡張機能に　「切り取り」　の追加。#切り取りは、ポイントが消えてめんどくさくなる可能性があるので「考え中」
+
+    nemo・quantlib・nntoolなどを用いた量子化機能の追加。
+    doryを用いたgap8用Cコードの生成機能の追加。
+# 修正・追加中事項
+    なし
+
+# 
+
+
+
+# anacondaを用いた環境構築
+```
 #------------------------------------
 #　環境構築(anaconda3)※stable version
 #------------------------------------
@@ -38,7 +57,6 @@ indent-randbow　←おすすめ
 
 
 
-
 # Name                    Version                   Build  Channel
 _libgcc_mutex             0.1                        main  
 _openmp_mutex             5.1                       1_gnu  
@@ -47,7 +65,7 @@ blas                      1.0                         mkl
 brotli-python             1.0.9            py39h6a678d5_9  
 bzip2                     1.0.8                h5eee18b_6  
 c-ares                    1.19.1               h5eee18b_0  
-ca-certificates           2025.2.25            h06a4308_0  
+ca-certificates           2025.2.25            h06a4308_0
 certifi                   2025.1.31        py39h06a4308_0  
 charset-normalizer        3.4.1                    pypi_0    pypi
 coloredlogs               15.0.1                   pypi_0    pypi
@@ -248,4 +266,5 @@ xz                        5.6.4                h5eee18b_1
 yaml                      0.2.5                h7b6447c_0  
 zipp                      3.21.0           py39h06a4308_0  
 zlib                      1.2.13               h5eee18b_1  
-zstd                      1.5.6                hc292b87_0  
+zstd                      1.5.6                hc292b87_0
+```
