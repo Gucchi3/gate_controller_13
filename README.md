@@ -11,7 +11,11 @@
 # 修正・追加中事項
     なし
 
-# 
+# 注意事項
+    2025-06-10 14:20:32,471 INFO Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+    2025-06-10 14:20:32,472 INFO Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+    
+    学習時などにこのような警告文が出るが、無視して問題ない。
 
 
 
