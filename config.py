@@ -1,12 +1,13 @@
 import os
 
 #共通設定値（パス、ハイパーパラメータ、カラーマップなど）
-PARENT_DIR    = r'C:\Users\nnykb\Desktop\gate_controller'   # 親フォルダ
+PARENT_DIR    = r'C:\Users\Owner\OneDrive\othres\Desktop\gate_controller_stable'   # 親フォルダ
 IMG_DIR       = os.path.join(PARENT_DIR, 'img')      # 推論用画像フォルダ
 DATASET_DIR   = os.path.join(PARENT_DIR, 'dataset')  # 学習用画像フォルダ
 JSON_DIR      = os.path.join(PARENT_DIR, 'json')     # <parent>/json
 OUT_DIR       = os.path.join(PARENT_DIR, 'log')      # モデル・ログ保存先
 IMG_OUT_DIR   = os.path.join(PARENT_DIR, 'img_out')  # 予測画像出力先
+HEATIMG_OUT_DIR   = os.path.join(PARENT_DIR, 'log/heatmap')  # 予測画像出力先
 INPUT_SIZE    = (160, 160)      # 入力画像サイズ (H, W)
 BATCH_SIZE    = 5               # バッチサイズ
 LEARNING_RATE = 1e-4            # 学習率

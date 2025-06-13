@@ -34,7 +34,7 @@ from config import (
     SAVE_INPUT_IMG, INPUT_IMG_DIR,
     CONTRAST_PROB, CONTRAST_RANGE, BRIGHTNESS_PROB, BRIGHTNESS_RANGE, SHARPNESS_PROB, SHARPNESS_RANGE,POINT_LABEL
 )
-from utils import split_dataset, mean_error, max_error, accuracy_at_threshold, plot_heatmap, plot_heatmap_for_image,  predict_with_features, save_all_fmap, predict_and_plot,worker_init_fn,yolo_dataset_collate
+from utils import split_dataset, mean_error, max_error, accuracy_at_threshold, plot_heatmap, plot_heatmap_for_image,  predict_with_features,  predict_and_plot,worker_init_fn,yolo_dataset_collate, heatmap
 from nets.net1 import net1_ex
 
 input_size = INPUT_SIZE[0]
@@ -322,8 +322,7 @@ def train_one_epoch(model, loader, optimizer, device, writer, epoch):
         out = model(imgs)  # [B, 9]
         preds = out[:, :8]  # [B,8] 4点座標
         gate_logits = out[:, 8]  # [B] ゲート存在logit
-    #    gate_logits = torch.sigmoid(torch.tensor(gate_logits))
-    #    print(f"gate_logits:{torch.sigmoid(gate_logits)}")
+       # print(f"gate_logits:{torch.sigmoid(gate_logits)}") #DEBUG
                 # --- バッチの一部をプリントしてみる ---
         # if epoch==1 or not printed:
         #     print("\n=== Debug: Epoch 1, Batch 1 の preds と targets (最初の1サンプルだけ) ===")
@@ -339,7 +338,7 @@ def train_one_epoch(model, loader, optimizer, device, writer, epoch):
         loss_coords = input_size * loss_coords#160*loss_coords
         # ゲート存在損失
         loss_gate = F.binary_cross_entropy_with_logits(gate_logits.squeeze(), gate_exists)
-        loss = 4 * loss_coords + GATE_EXIST_LOSS_WEIGHT * 4 * input_size * loss_gate
+        loss = 4 * loss_coords + GATE_EXIST_LOSS_WEIGHT  * loss_gate
         optimizer.zero_grad(); loss.backward(); optimizer.step()
         running_loss += loss.item() * imgs.size(0)
 
@@ -661,17 +660,18 @@ def main():
         pts, out_img, heatmap_path, fmap_dir, onnx_path = predict_with_features(model, img_path, device, out_dir)
         print(f"Predicted corners (1, 2, 3, 4): {pts}")
         print(f"Output image saved to: {out_img}")
-        # heatmapはdataset/のときのみ出力
-        if folder_type == 'dataset' and heatmap_path:
-            model.load_state_dict(torch.load(PRED_CKPT, map_location=device,weights_only=True))
-            success = plot_heatmap_for_image(model, img_path, device, heatmap_path)
-            if success:
-                print(f"ヒートマップを {heatmap_path} に保存しました。")
-            else:
-                print(f"heat_map error")
-        elif folder_type == 'img':
-            print("img/ フォルダの画像ではヒートマップは出力しません。")
-        print(f"Feature maps saved to: {fmap_dir}")
+        transform = T.Compose([
+            T.Resize(INPUT_SIZE),
+            T.Grayscale(num_output_channels=1),
+            T.ToTensor()])
+        pil_img = Image.open(img_path).convert('RGB')
+        image_tensor = transform(pil_img).unsqueeze(0).to(device)
+        # heatmap_chatでヒートマップを保存
+        heatmap_save_path = os.path.join(session_dir, 'heatmap_chat.png')
+        from utils import heatmap_chat
+        heatmap(model, image_tensor, model.conv4b)
+        
+        heatmap_chat(model, image_tensor, heatmap_save_path, model.conv4b)
 
     elif mode == '3':
         # imgフォルダ内の全画像を一括推論
@@ -684,6 +684,15 @@ def main():
             pts, out_path = predict_and_plot(model, imgp, device)
             print(f"{os.path.basename(imgp)}: {pts} -> {os.path.basename(out_path)}")
             results.append((os.path.basename(imgp), pts, os.path.basename(out_path)))
+            transform = T.Compose([
+            T.Resize(INPUT_SIZE),
+            T.Grayscale(num_output_channels=1),
+            T.ToTensor()])
+            pil_img = Image.open(imgp).convert('RGB')
+            image_tensor = transform(pil_img).unsqueeze(0).to(device)
+            # 画像名のみをheatmapのファイル名として渡す
+            img_name = os.path.splitext(os.path.basename(imgp))[0]
+            heatmap(model, image_tensor, img_name, model.conv4b)
         # 結果をテキストで保存
         result_txt = os.path.join(session_dir, 'batch_predict_results.txt')
         with open(result_txt, 'w', encoding='utf-8') as f:
@@ -766,7 +775,7 @@ if __name__ == '__main__':
 #
 #? 【export_onnx機能（mode==4）】
 # main
-#  ├─ model.load_state_dict           # 学習済みモデルの重みを読み込む
+#  ├─ model.load_state_dict           # 学習済みモデルの重みを読み込み
 #  ├─ torch.onnx.export               # モデルをONNX形式でエクスポート
 #  └─ (結果出力/print)                # エクスポート結果を出力
 #
