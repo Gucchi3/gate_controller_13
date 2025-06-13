@@ -459,6 +459,8 @@ def heatmap(model, image, save_file_name, target_layer):
 
     handle_f.remove()
     handle_b.remove()
+
+    
 #? カメラのライブ映像から推論し、結果を表示する
 # 入力: model(torch.nn.Module), device(str|torch.device), out_dir(str)
 # 出力: なし
@@ -534,88 +536,6 @@ def predict_from_camera(model, device, out_dir):
 
     cap.release()
     cv2.destroyAllWindows()
-
-def heatmap_chat(model, image_tensor, save_path, target_layer):
-    """
-    Grad-CAMによるヒートマップを生成し、入力画像に重ねて保存する関数。
-    model: PyTorchモデル
-    image_tensor: (1, C, H, W) のテンソル
-    save_path: 保存先パス
-    target_layer: ヒートマップを可視化したい畳み込み層（例: model.conv4b）
-    """
-    model.eval()
-    activations = None
-    gradients = None
-
-    def forward_hook(module, input, output):
-        nonlocal activations
-        activations = output.detach()
-
-    def backward_hook(module, grad_in, grad_out):
-        nonlocal gradients
-        gradients = grad_out[0].detach()
-
-    # Hook登録
-    fwd_handle = target_layer.register_forward_hook(forward_hook)
-    bwd_handle = target_layer.register_full_backward_hook(backward_hook)
-
-    image_tensor = image_tensor.requires_grad_()
-    output = model(image_tensor)
-    # 出力が複数クラスの場合は最大スコアのクラスを対象
-    if output.ndim == 2 or output.ndim == 1:
-        class_idx = output.argmax() if output.ndim == 2 else 0
-        score = output[0, class_idx] if output.ndim == 2 else output[class_idx]
-    else:
-        score = output
-    model.zero_grad()
-    score.backward(retain_graph=True)
-
-    # Grad-CAM重み計算
-    weights = gradients.mean(dim=(2, 3), keepdim=True)  # (B, C, 1, 1)
-    grad_cam = (weights * activations).sum(dim=1, keepdim=True)  # (B, 1, H, W)
-    grad_cam = F.relu(grad_cam)
-    grad_cam = grad_cam[0, 0].cpu().numpy()
-    grad_cam -= grad_cam.min()
-    grad_cam /= (grad_cam.max() + 1e-8)
-
-    # 入力画像サイズにリサイズ
-    _, _, H, W = image_tensor.shape
-    grad_cam_img = Image.fromarray(np.uint8(grad_cam * 255)).resize((W, H), resample=Image.BILINEAR)
-    grad_cam_img = np.array(grad_cam_img)
-
-    # カラーマップ適用（jet）
-    import matplotlib.cm as cm
-    heatmap = cm.jet(grad_cam_img / 255.0)[:, :, :3]  # RGBA→RGB
-    heatmap = np.uint8(heatmap * 255)
-
-    # 入力画像をPILで取得
-    img = image_tensor[0].detach().cpu().numpy()
-    if img.shape[0] == 3:
-        img = np.transpose(img, (1, 2, 0))  # CHW→HWC
-    elif img.shape[0] == 1:
-        img = img[0]  # (1, H, W) → (H, W)
-    img -= img.min()
-    img /= (img.max() + 1e-8)
-    img = np.uint8(img * 255)
-    img = np.squeeze(img)  # (H, W, 1)や(1, H, W)→(H, W)
-    img_pil = Image.fromarray(img)
-    # 画像モードを統一
-    if img_pil.mode != 'RGB':
-        img_pil = img_pil.convert('RGB')
-
-    # ヒートマップと重ね合わせ
-    heatmap_pil = Image.fromarray(heatmap).convert('RGB')
-    # サイズを統一
-    if heatmap_pil.size != img_pil.size:
-        heatmap_pil = heatmap_pil.resize(img_pil.size, resample=Image.BILINEAR)
-    overlay = Image.blend(img_pil, heatmap_pil, alpha=0.5)
-    overlay.save(save_path)
-
-    # Hook解除
-    fwd_handle.remove()
-    bwd_handle.remove()
-
-    return overlay
 
 
 
