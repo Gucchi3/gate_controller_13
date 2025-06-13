@@ -32,9 +32,9 @@ from config import (
     HEATMAP_CMAP, HEATMAP_IMG_CMAP, FEATUREMAP_CMAP, MEAN_ERROR_CURVE_COLOR, POINT_ERROR_COLORS,SHOW_SUMMAR,
     AUGMENTATION_ENABLED, FLIP_PROB, ROTATE_PROB, ROTATE_DEGREE, SCALE_PROB, SCALE_RANGE,
     SAVE_INPUT_IMG, INPUT_IMG_DIR,
-    CONTRAST_PROB, CONTRAST_RANGE, BRIGHTNESS_PROB, BRIGHTNESS_RANGE, SHARPNESS_PROB, SHARPNESS_RANGE,POINT_LABEL
+    CONTRAST_PROB, CONTRAST_RANGE, BRIGHTNESS_PROB, BRIGHTNESS_RANGE, SHARPNESS_PROB, SHARPNESS_RANGE,POINT_LABEL,NOIZ_PROB,NOIZ_mu,NOIZ_sigma
 )
-from utils import split_dataset, mean_error, max_error, accuracy_at_threshold, plot_heatmap, plot_heatmap_for_image,  predict_with_features,  predict_and_plot,worker_init_fn,yolo_dataset_collate, heatmap
+from utils import  heatmap,split_dataset, mean_error, max_error, accuracy_at_threshold, plot_heatmap, plot_heatmap_for_image,  predict_with_features,  predict_and_plot,worker_init_fn,yolo_dataset_collate, heatmap
 from nets.net1 import net1_ex
 
 input_size = INPUT_SIZE[0]
@@ -161,7 +161,6 @@ class LabelMeCornerDataset(Dataset):
                     # ラベル順序も反転（top, right, left, bottom → top, left, right, bottom）
                     pts[[1, 3]] = pts[[3, 1]]
                     #* 20250609 
-
                 #? 2. 拡大縮小
                 if random.random() < SCALE_PROB:
                     scale = random.uniform(SCALE_RANGE[0], SCALE_RANGE[1])   # 拡大縮小率をランダムに選択
@@ -200,8 +199,7 @@ class LabelMeCornerDataset(Dataset):
                         img = new_img
                         pts = pts + [left, upper]  # アノテーションをシフト
 
-                        # 縮小配置の場合、画像外に出ることは無いのでマスク更新不要
-                
+                        # 縮小配置の場合、画像外に出ることは無いのでマスク更新不要                
                 #? 3. ランダム回転
                 if random.random() < ROTATE_PROB:
                     angle = random.uniform(-ROTATE_DEGREE, ROTATE_DEGREE)  # 回転角をランダムに決定
@@ -222,26 +220,31 @@ class LabelMeCornerDataset(Dataset):
                     #     if x < 0 or input_size <= x:
                     #         mask[i, 0] = 0
                     #     if y < 0 or input_size <= y:(*´ω｀*)
-                    #         mask[i, 1] = 0
-                        
-
+                    #         mask[i, 1] =  
                 #? 4. コントラスト変換
                 if random.random() < CONTRAST_PROB:
                     from PIL import ImageEnhance
                     factor = random.uniform(CONTRAST_RANGE[0], CONTRAST_RANGE[1])
                     img = ImageEnhance.Contrast(img).enhance(factor)  # コントラスト変換
-
                 #? 5. 明るさ変換
                 if random.random() < BRIGHTNESS_PROB:
                     from PIL import ImageEnhance
                     factor = random.uniform(BRIGHTNESS_RANGE[0], BRIGHTNESS_RANGE[1])
                     img = ImageEnhance.Brightness(img).enhance(factor)  # 明るさ変換
-
                 #? 6. シャープネス変換
                 if random.random() < SHARPNESS_PROB:
                     from PIL import ImageEnhance
                     factor = random.uniform(SHARPNESS_RANGE[0], SHARPNESS_RANGE[1])
                     img = ImageEnhance.Sharpness(img).enhance(factor)  # シャープネス変換
+                #? 7. ノイズ付加
+                if random.random() < NOIZ_PROB:
+                    img_np = np.array(img).astype(np.float32)
+                    noise = np.random.normal(NOIZ_mu, NOIZ_sigma, img_np.shape)
+                    img_np = img_np + noise
+                    img_np = np.clip(img_np, 0, 255).astype(np.uint8)
+                    img = Image.fromarray(img_np)
+
+                
         # 変換後のリサイズ・グレースケール・Tensor化
         tensor_img = self.transforms(img)
         # --- 入力画像保存（拡張後のTensor→画像） ---
@@ -692,7 +695,7 @@ def main():
             image_tensor = transform(pil_img).unsqueeze(0).to(device)
             # 画像名のみをheatmapのファイル名として渡す
             img_name = os.path.splitext(os.path.basename(imgp))[0]
-            heatmap(model, image_tensor, img_name, model.conv4b)
+            heatmap(model, image_tensor,img_name,model.pool4 )#!HEATMAPのmodelの場所指定はここ！ーーーーーーーーーーーーーーーーーー
         # 結果をテキストで保存
         result_txt = os.path.join(session_dir, 'batch_predict_results.txt')
         with open(result_txt, 'w', encoding='utf-8') as f:

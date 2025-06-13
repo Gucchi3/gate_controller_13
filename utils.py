@@ -310,7 +310,7 @@ def save_all_fmap(model, x, save_root, pick_fn=None, max_ch=64, cmap=None):
             axs[i].axis("off")
         plt.tight_layout(pad=2.0)  # 隙間を広げる
         fig.savefig(root / f"{lname_out}.png", dpi=150, bbox_inches="tight")
-        plt.close(fig)
+        plt.close()
 
 # ----------------------------
 # Predict and plot result
@@ -412,51 +412,85 @@ def heatmap(model, image, save_file_name, target_layer):
 
     model.eval()
     y_pred = model(image)
-    pred_index = torch.argmax(y_pred)
-    model.zero_grad()
-    y_pred[0][pred_index].backward()
+    # ゲート存在logitは出力の最後の要素 (インデックス8)
+    target_output = y_pred[0, 8]
 
-    # Grad-CAM重み計算（標準的な方法）
+    model.zero_grad()
+    target_output.backward()
+
+    # Grad-CAM重み計算
     gradients = grads['value']  # (B, C, H, W)
     activations = features['value']  # (B, C, H, W)
+
     alpha = gradients.mean(dim=(2, 3), keepdim=True)  # (B, C, 1, 1)
-    grad_cam = (alpha * activations).sum(dim=1, keepdim=True)  # (B, 1, H, W)
-    grad_cam = F.relu(grad_cam)
-    grad_cam = grad_cam[0, 0].cpu().numpy()
-    grad_cam -= grad_cam.min()
-    grad_cam /= (grad_cam.max() + 1e-8)
+
+    before_relu_grad_cam = (alpha * activations).sum(dim=1, keepdim=True) # 一時変数で受ける
+
+    grad_cam = F.relu(before_relu_grad_cam) # ReLU適用
+
+    if grad_cam.shape[0] > 0 and grad_cam.shape[1] > 0:
+        grad_cam = grad_cam[0, 0].cpu().numpy()
+        min_val = grad_cam.min()
+        max_val = grad_cam.max()
+        grad_cam -= min_val
+        if max_val - min_val > 1e-8:
+            grad_cam /= (max_val - min_val)
+        else:
+            grad_cam = np.zeros_like(grad_cam)
+    else:
+        # Fallback if grad_cam is empty or has invalid dimensions
+        _, _, H, W = image.shape
+        grad_cam = np.zeros((H, W))
 
     # 入力画像サイズにリサイズ
     _, _, H, W = image.shape
-    grad_cam_img = cv2.resize(grad_cam.astype(np.float32), (W, H))
+    grad_cam_resized = cv2.resize(grad_cam, (W, H))
 
-    # カラーマップ適用
-    cm = plt.get_cmap('jet')
-    heatmap = cm(grad_cam_img)[:, :, :3]  # RGBA→RGB
-    heatmap = np.uint8(heatmap * 255)
+    # 元の画像を準備 (0-255, BGR)
+    original_img_np = image.squeeze().cpu().numpy()
+    if original_img_np.ndim == 3 and original_img_np.shape[0] == 1:
+        original_img_np = original_img_np.squeeze(0)
+    if original_img_np.ndim == 2:
+        original_img_np = np.stack([original_img_np]*3, axis=-1)  # (H, W, 3)
+    elif original_img_np.shape[0] == 3:
+        # (3, H, W) -> (H, W, 3)
+        original_img_np = np.transpose(original_img_np, (1, 2, 0))
+    original_img_np = (original_img_np * 255).astype(np.uint8)
+    # RGB->BGR
+    original_img_bgr = cv2.cvtColor(original_img_np, cv2.COLOR_RGB2BGR)
 
-    # 入力画像を0-1正規化＆3ch化
-    img1 = image[0].detach().cpu().numpy()  # (C, H, W)
-    if img1.shape[0] == 1:
-        img1 = np.repeat(img1, 3, axis=0)  # 1ch→3ch
-    img1 = np.transpose(img1, (1, 2, 0))  # (H, W, C)
-    img1 -= img1.min()
-    img1 /= (img1.max() + 1e-8)
-    img1 = np.uint8(img1 * 255)
+    # ヒートマップをカラーマップで色付け
+    heatmap_uint8 = np.uint8(255 * grad_cam_resized)
+    heatmap_colored = cv2.applyColorMap(heatmap_uint8, cv2.COLORMAP_JET)
 
-    # 合成
-    if heatmap.shape != img1.shape:
-        heatmap = cv2.resize(heatmap, (img1.shape[1], img1.shape[0]))
-    alpha = 0.5
-    grad_cam_image = cv2.addWeighted(img1, alpha, heatmap, 1 - alpha, 0)
+    # 元画像とヒートマップを重ね合わせ
+    superimposed_img = cv2.addWeighted(original_img_bgr, 0.6, heatmap_colored, 0.4, 0)
 
-    # 保存
-    im = Image.fromarray(grad_cam_image)
-    os.makedirs(HEATIMG_OUT_DIR, exist_ok=True)
-    out_path = os.path.join(HEATIMG_OUT_DIR, f"{save_file_name}_heatmap.png")
-    im.save(out_path)
-    print(f"ヒートマップ画像を保存しました: {out_path}")
+    # 保存パスの決定
+    output_base_name, output_ext = os.path.splitext(save_file_name)
+    if os.path.sep in save_file_name or ('/' in save_file_name and os.altsep == '/'):  # フルパスまたは相対パスの場合
+        if not output_ext:
+            output_ext = ".png"
+        final_save_path = output_base_name + "_heatmap" + output_ext
+        save_directory = os.path.dirname(final_save_path)
+    else:
+        if not output_ext:
+            output_base_name = save_file_name
+            output_ext = ".png"
+        try:
+            from config import IMG_OUT_DIR
+        except ImportError:
+            IMG_OUT_DIR = "img_out"
+        save_directory = os.path.join(IMG_OUT_DIR, "heatmaps")
+        final_save_path = os.path.join(save_directory, output_base_name + "_heatmap" + output_ext)
 
+    if save_directory and not os.path.exists(save_directory):
+        os.makedirs(save_directory, exist_ok=True)
+
+    cv2.imwrite(final_save_path, superimposed_img)
+    print(f"Heatmap saved to {final_save_path}")
+
+    # フックを解除
     handle_f.remove()
     handle_b.remove()
 
@@ -536,6 +570,5 @@ def predict_from_camera(model, device, out_dir):
 
     cap.release()
     cv2.destroyAllWindows()
-
 
 
