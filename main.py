@@ -1,4 +1,3 @@
-
 #!---------------------------------
 #!---折り畳み機能を使って折りたたむこと
 #!---------------------------------
@@ -273,6 +272,8 @@ class LabelMeCornerDataset(Dataset):
             pts_normalized += [x_norm, y_norm]
         # ゲート存在ラベル（1点でもアノテーションがあれば 1.0、なければ 0.0）
         gate_exist = 1.0 if np.any(np.array(mask) > 0.0) else 0.0
+        #print(f"gate_exist:{gate_exist}")
+
 
         # ファイル名と正解座標を表示
         #print(f"{rec['image']}: top{tuple(pts[0])}, right{tuple(pts[1])}, left{tuple(pts[2])}, bottom{tuple(pts[3])}")
@@ -321,7 +322,8 @@ def train_one_epoch(model, loader, optimizer, device, writer, epoch):
         out = model(imgs)  # [B, 9]
         preds = out[:, :8]  # [B,8] 4点座標
         gate_logits = out[:, 8]  # [B] ゲート存在logit
-        #print(gate_logits)
+    #    gate_logits = torch.sigmoid(torch.tensor(gate_logits))
+    #    print(f"gate_logits:{torch.sigmoid(gate_logits)}")
                 # --- バッチの一部をプリントしてみる ---
         # if epoch==1 or not printed:
         #     print("\n=== Debug: Epoch 1, Batch 1 の preds と targets (最初の1サンプルだけ) ===")
@@ -337,7 +339,7 @@ def train_one_epoch(model, loader, optimizer, device, writer, epoch):
         loss_coords = input_size * loss_coords#160*loss_coords
         # ゲート存在損失
         loss_gate = F.binary_cross_entropy_with_logits(gate_logits.squeeze(), gate_exists)
-        loss = 4 * loss_coords + GATE_EXIST_LOSS_WEIGHT * loss_gate
+        loss = 4 * loss_coords + GATE_EXIST_LOSS_WEIGHT * 4 * input_size * loss_gate
         optimizer.zero_grad(); loss.backward(); optimizer.step()
         running_loss += loss.item() * imgs.size(0)
 
