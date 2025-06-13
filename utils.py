@@ -230,25 +230,26 @@ def predict_with_features(model, img_path, device, out_dir):
     draw_img.save(out_img_path)
 
     # ── GT JSON があれば、誤差を計算してヒートマップなど生成可能 ──
-    base = os.path.splitext(os.path.basename(img_path))[0]
-    json_path = os.path.join(JSON_DIR, base + '.json')
-    heatmap_path = os.path.join(out_dir, 'heatmap.jpg')
-    if os.path.exists(json_path):
-        with open(json_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        gt_map = {s['label']: s['points'][0] for s in data['shapes'] if s.get('shape_type') == 'point'}
-        gt_pts = [tuple(gt_map.get(lbl, (0, 0))) for lbl in point_labels]
-        errors = [np.linalg.norm(np.array(gt) - np.array(pr)) for gt, pr in zip(gt_pts, pts_orig)]
+    # base = os.path.splitext(os.path.basename(img_path))[0]
+    # json_path = os.path.join(JSON_DIR, base + '.json')
+    # heatmap_path = os.path.join(out_dir, 'heatmap.jpg')
+    # if os.path.exists(json_path):
+    #     with open(json_path, 'r', encoding='utf-8') as f:
+    #         data = json.load(f)
+    #     gt_map = {s['label']: s['points'][0] for s in data['shapes'] if s.get('shape_type') == 'point'}
+    #     gt_pts = [tuple(gt_map.get(lbl, (0, 0))) for lbl in point_labels]
+    #     errors = [np.linalg.norm(np.array(gt) - np.array(pr)) for gt, pr in zip(gt_pts, pts_orig)]
 
-        plt.figure(figsize=(8, 2))
-        sns.heatmap([errors], annot=True, fmt=".1f", cmap='Reds')
-        plt.title("Point-wise Error (px)")
-        plt.xlabel("Point Index")
-        plt.ylabel("Error")
-        plt.savefig(heatmap_path)
-        plt.close()
-    else:
-        heatmap_path = None
+    #     plt.figure(figsize=(8, 2))
+    #     sns.heatmap([errors], annot=True, fmt=".1f", cmap='Reds')
+    #     plt.title("Point-wise Error (px)")
+    #     plt.xlabel("Point Index")
+    #     plt.ylabel("Error")
+    #     plt.savefig(heatmap_path)
+    #     plt.close()
+    # else:
+    #     heatmap_path = None
+    heatmap_path = None
 
     # ── 特徴マップを保存するディレクトリを作成 ──
     fmap_dir = os.path.join(out_dir, 'features_map')
