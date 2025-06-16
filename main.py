@@ -28,13 +28,14 @@ import numpy as np
 from torchinfo import summary
 
 from config import (
-    PARENT_DIR, IMG_DIR, DATASET_DIR, JSON_DIR, OUT_DIR, IMG_OUT_DIR, INPUT_SIZE, BATCH_SIZE, LEARNING_RATE, EPOCHS, EVAL_PERIOD, NUM_WORKERS, DIST_THRESH, PRED_CKPT,
-    HEATMAP_CMAP, HEATMAP_IMG_CMAP, FEATUREMAP_CMAP, MEAN_ERROR_CURVE_COLOR, POINT_ERROR_COLORS,SHOW_SUMMAR,
+    PARENT_DIR, IMG_DIR, DATASET_DIR, JSON_DIR, OUT_DIR, INPUT_SIZE, BATCH_SIZE, LEARNING_RATE, EPOCHS, 
+    NUM_WORKERS, DIST_THRESH, PRED_CKPT,MEAN_ERROR_CURVE_COLOR, POINT_ERROR_COLORS,SHOW_SUMMAR,
     AUGMENTATION_ENABLED, FLIP_PROB, ROTATE_PROB, ROTATE_DEGREE, SCALE_PROB, SCALE_RANGE,
-    SAVE_INPUT_IMG, INPUT_IMG_DIR,
-    CONTRAST_PROB, CONTRAST_RANGE, BRIGHTNESS_PROB, BRIGHTNESS_RANGE, SHARPNESS_PROB, SHARPNESS_RANGE,POINT_LABEL,NOIZ_PROB,NOIZ_mu,NOIZ_sigma
+    SAVE_INPUT_IMG, INPUT_IMG_DIR,NOIZ_MU, NOIZ_SIGMA,CONTRAST_PROB, CONTRAST_RANGE, BRIGHTNESS_PROB, 
+    BRIGHTNESS_RANGE, SHARPNESS_PROB, SHARPNESS_RANGE,POINT_LABEL,NOIZ_PROB,BLUR_PROB
 )
-from utils import  heatmap,split_dataset, mean_error, max_error, accuracy_at_threshold, plot_heatmap, plot_heatmap_for_image,  predict_with_features,  predict_and_plot,worker_init_fn,yolo_dataset_collate, heatmap
+from utils import   heatmap,split_dataset, mean_error, max_error, accuracy_at_threshold, plot_heatmap, \
+                    predict_with_features,  predict_and_plot,worker_init_fn,yolo_dataset_collate, heatmap
 from nets.net1 import net1_ex
 
 input_size = INPUT_SIZE[0]
@@ -239,10 +240,16 @@ class LabelMeCornerDataset(Dataset):
                 #? 7. ノイズ付加
                 if random.random() < NOIZ_PROB:
                     img_np = np.array(img).astype(np.float32)
-                    noise = np.random.normal(NOIZ_mu, NOIZ_sigma, img_np.shape)
+                    noise = np.random.normal(NOIZ_MU, NOIZ_SIGMA, img_np.shape)
                     img_np = img_np + noise
                     img_np = np.clip(img_np, 0, 255).astype(np.uint8)
                     img = Image.fromarray(img_np)
+                #? ブラー付加
+                from PIL import ImageFilter
+                if random.random() < BLUR_PROB:
+                    img = img.filter(ImageFilter.SMOOTH)
+
+                    
 
                 
         # 変換後のリサイズ・グレースケール・Tensor化
