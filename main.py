@@ -281,7 +281,13 @@ class LabelMeCornerDataset(Dataset):
             y_norm = y / float(h0)
             pts_normalized += [x_norm, y_norm]
         # ゲート存在ラベル（1点でもアノテーションがあれば 1.0、なければ 0.0）
-        gate_exist = 1.0 if np.any(np.array(mask) > 0.0) else 0.0
+        gate_exist = 1.0 if np.any(np.array(mask) >= 0.0)  else 0.0
+        point_exists = []
+        for x, y in pts:
+            point_exists.append(1.0 if 0 <= x <= 159 and 0 <= y <= 159 else 0.0)
+                
+            
+        
         #print(f"gate_exist:{gate_exist}")
 
 
@@ -291,7 +297,8 @@ class LabelMeCornerDataset(Dataset):
             tensor_img,
             torch.tensor(pts_normalized, dtype=torch.float32),
             torch.tensor(mask, dtype=torch.float32),
-            torch.tensor(gate_exist, dtype=torch.float32)
+            torch.tensor(gate_exist, dtype=torch.float32),
+            torch.tensor(point_exists, dtype=torch.float32)
         )
 
 
@@ -327,11 +334,12 @@ def train_one_epoch(model, loader, optimizer, device, writer, epoch):
     running_loss = 0.0
     img_save_count = 0
     from config import GATE_EXIST_LOSS_WEIGHT
-    for imgs, targets, masks, gate_exists in tqdm(loader, desc=f"Epoch {epoch} Train", leave=False):
+    for imgs, targets, masks, gate_exists, point_exists in tqdm(loader, desc=f"Epoch {epoch} Train", leave=False):
         imgs, targets, masks, gate_exists = imgs.to(device), targets.to(device), masks.to(device), gate_exists.to(device)
         out = model(imgs)  # [B, 9]
         preds = out[:, :8]  # [B,8] 4点座標
         gate_logits = out[:, 8]  # [B] ゲート存在logit
+        point_preds = out[:, 8:12]
        # print(f"gate_logits:{torch.sigmoid(gate_logits)}") #DEBUG
                 # --- バッチの一部をプリントしてみる ---
         # if epoch==1 or not printed:
@@ -349,6 +357,12 @@ def train_one_epoch(model, loader, optimizer, device, writer, epoch):
         # ゲート存在損失
         loss_gate = F.binary_cross_entropy_with_logits(gate_logits.squeeze(), gate_exists)
         loss = 4 * loss_coords + GATE_EXIST_LOSS_WEIGHT  * loss_gate
+        
+        # point_preds_loss
+        loss_point_preds = F.binary_cross_entropy_with_logits(point_preds.squeeze(), point_exists )
+        loss += loss_point_preds * 4
+
+        # Backward()
         optimizer.zero_grad(); loss.backward(); optimizer.step()
         running_loss += loss.item() * imgs.size(0)
 
