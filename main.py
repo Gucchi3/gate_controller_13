@@ -32,7 +32,7 @@ from config import (
     NUM_WORKERS, DIST_THRESH, PRED_CKPT,MEAN_ERROR_CURVE_COLOR, POINT_ERROR_COLORS,SHOW_SUMMAR,
     AUGMENTATION_ENABLED, FLIP_PROB, ROTATE_PROB, ROTATE_DEGREE, SCALE_PROB, SCALE_RANGE,
     SAVE_INPUT_IMG, INPUT_IMG_DIR,NOIZ_MU, NOIZ_SIGMA,CONTRAST_PROB, CONTRAST_RANGE, BRIGHTNESS_PROB, 
-    BRIGHTNESS_RANGE, SHARPNESS_PROB, SHARPNESS_RANGE,POINT_LABEL,NOIZ_PROB,BLUR_PROB
+    BRIGHTNESS_RANGE, SHARPNESS_PROB, SHARPNESS_RANGE,POINT_LABEL,NOIZ_PROB,BLUR_PROB,POINT_EXISTS_LOSS_WEIGHT
 )
 from utils import   heatmap,split_dataset, mean_error, max_error, accuracy_at_threshold, plot_heatmap, \
                     predict_with_features,  predict_and_plot,worker_init_fn,yolo_dataset_collate, heatmap
@@ -283,11 +283,14 @@ class LabelMeCornerDataset(Dataset):
         # ゲート存在ラベル（1点でもアノテーションがあれば 1.0、なければ 0.0）
         gate_exist = 1.0 if np.any(np.array(mask) >= 0.0)  else 0.0
         point_exists = []
-        for x, y in pts:
-            point_exists.append(1.0 if 0 <= x <= 159 and 0 <= y <= 159 else 0.0)
-                
-            
-        
+        point_exists = np.array(point_exists)
+        mask_arr = np.array(mask)
+        mask_arr = mask_arr.reshape(4, 2)
+        mask_arr = mask_arr[:, :1]
+        point_exists = mask_arr
+        point_exists = point_exists.squeeze()
+        point_exists = point_exists.tolist()
+ 
         #print(f"gate_exist:{gate_exist}")
 
 
@@ -302,23 +305,6 @@ class LabelMeCornerDataset(Dataset):
         )
 
 
-        #? 【学習・検証機能（mode==1）】
-        # main
-        #  └─ train_dataset = LabelMeCornerDataset(...)   # ← ここでインスタンス化
-        #  └─ val_dataset   = LabelMeCornerDataset(...)
-        #  └─ test_dataset  = LabelMeCornerDataset(...)
-        #      ├─ DataLoaderでラップ
-        #      │   └─ for imgs, targets, masks in DataLoader(...):
-        #      │         └─ __getitem__が呼ばれる（画像・座標・マスクを返す）
-        #      ├─ train_one_epoch / validate / mean_error などでデータが使われる
-
-        #? 【推論機能（mode==2）】
-        # main
-        #  └─ 入力画像パス取得（ユーザー入力）
-        #  └─ model.load_state_dict
-        #  └─ predict_with_features(model, img_path, device, out_dir)
-        #      └─ 画像1枚を直接PILで読み込み、前処理・推論
-        #      └─ ※通常はLabelMeCornerDatasetは使われない
 
 
 #? -------------------------------------------------------------------------------------
@@ -340,6 +326,7 @@ def train_one_epoch(model, loader, optimizer, device, writer, epoch):
         preds = out[:, :8]  # [B,8] 4点座標
         gate_logits = out[:, 8]  # [B] ゲート存在logit
         point_preds = out[:, 9:13]
+
        # print(f"gate_logits:{torch.sigmoid(gate_logits)}") #DEBUG
                 # --- バッチの一部をプリントしてみる ---
         # if epoch==1 or not printed:
@@ -354,13 +341,14 @@ def train_one_epoch(model, loader, optimizer, device, writer, epoch):
         # 座標損失
         loss_coords = F.smooth_l1_loss(preds * masks, targets * masks, reduction='sum') / (masks.sum() + 1e-6)
         loss_coords = input_size * loss_coords#160*loss_coords
+
         # ゲート存在損失
         loss_gate = F.binary_cross_entropy_with_logits(gate_logits.squeeze(), gate_exists)
         loss = 4 * loss_coords + GATE_EXIST_LOSS_WEIGHT  * loss_gate
-        
+
         # point_preds_loss
         loss_point_preds = F.binary_cross_entropy_with_logits(point_preds.squeeze(), point_exists )
-        loss += loss_point_preds * 4
+        loss += loss_point_preds * POINT_EXISTS_LOSS_WEIGHT
 
         # Backward()
         optimizer.zero_grad(); loss.backward(); optimizer.step()
@@ -385,12 +373,19 @@ def validate(model, loader, device, writer, epoch, tag='val'):
             preds = out[:, :8]  # [B,8]
             gate_logits = out[:, 8]  # [B]
             point_preds = out[:, 9:13]
+
+            # 座標損失
             loss_coords = F.smooth_l1_loss(preds * masks, targets * masks, reduction='sum') / (masks.sum() + 1e-6)
             loss_coords = input_size * loss_coords
+
+            # ゲート存在損失
             loss_gate = F.binary_cross_entropy_with_logits(gate_logits.squeeze(), gate_exists)
             loss = 4*loss_coords + GATE_EXIST_LOSS_WEIGHT * loss_gate
+
+            # ポイント存在損失
             loss_point = F.binary_cross_entropy_with_logits(point_preds, point_exists)
-            loss += loss_point * 4
+            loss += loss_point * POINT_EXISTS_LOSS_WEIGHT
+
             running_loss += loss.item() * imgs.size(0)
     avg = running_loss / len(loader.dataset)
     writer.add_scalar(f'Loss/{tag}', avg, epoch)
