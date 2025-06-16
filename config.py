@@ -1,7 +1,7 @@
 import os
 
 #共通設定値（パス、ハイパーパラメータ、カラーマップなど）
-PARENT_DIR    = r'C:\Users\nnykb\Desktop\gate_controller'   # 親フォルダ
+PARENT_DIR    = r'/home/ihpc-3090ti/SSD2/yamaguchi-k/gate_controller_stable'   # 親フォルダ
 IMG_DIR       = os.path.join(PARENT_DIR, 'img')      # 推論用画像フォルダ
 DATASET_DIR   = os.path.join(PARENT_DIR, 'dataset')  # 学習用画像フォルダ
 JSON_DIR      = os.path.join(PARENT_DIR, 'json')     # <parent>/json
@@ -30,7 +30,7 @@ SHOW_SUMMAR = 1 #ネットワーク構造を出力するか
 AUGMENTATION_ENABLED =True
 # 画像変換パラメータ
 FLIP_PROB = 0.5         # 左右反転の確率
-ROTATE_PROB = 0       # ランダム回転の確率
+ROTATE_PROB = 0.5       # ランダム回転の確率
 ROTATE_DEGREE = 15      # 回転角度の最大値（±）
 SCALE_PROB = 0.6        # 拡大縮小の確率
 SCALE_RANGE = (0.4,1.2) # 拡大縮小の倍率範囲（min, max）
@@ -41,9 +41,9 @@ BRIGHTNESS_RANGE = (0.6, 1.4) # 明るさ倍率範囲
 SHARPNESS_PROB = 0.5  # シャープネス変換の確率
 SHARPNESS_RANGE = (0.6, 1.4) # シャープネス倍率範囲
 NOIZ_PROB  =  0.5  #ノイズ付加確率
-NOIZ_mu  = 0
-NOIZ_sigma = 10
-
+NOIZ_MU  = 0
+NOIZ_SIGMA = 10
+BLUR_PROB = 0.5
 
 # 入力画像保存のON/OFFと保存先ディレクトリ
 SAVE_INPUT_IMG = True  # Trueで保存、Falseで保存しない
