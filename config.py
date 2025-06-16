@@ -1,7 +1,7 @@
 import os
 
 #共通設定値（パス、ハイパーパラメータ、カラーマップなど）
-PARENT_DIR    = r'/home/ihpc-3090ti/SSD2/yamaguchi-k/gate_controller_stable'   # 親フォルダ
+PARENT_DIR    = r'C:\Users\nnykb\Desktop\gate_controller'   # 親フォルダ
 IMG_DIR       = os.path.join(PARENT_DIR, 'img')      # 推論用画像フォルダ
 DATASET_DIR   = os.path.join(PARENT_DIR, 'dataset')  # 学習用画像フォルダ
 JSON_DIR      = os.path.join(PARENT_DIR, 'json')     # <parent>/json
@@ -11,7 +11,7 @@ HEATIMG_OUT_DIR   = os.path.join(PARENT_DIR, 'log/heatmap')  # 予測画像出�
 INPUT_SIZE    = (160, 160)      # 入力画像サイズ (H, W)
 BATCH_SIZE    = 5               # バッチサイズ
 LEARNING_RATE = 1e-4            # 学習率
-EPOCHS        = 2000              # 学習エポック数
+EPOCHS        = 500              # 学習エポック数
 EVAL_PERIOD   = 50               # 何エポックごとに評価を行うか
 NUM_WORKERS   = 4               # DataLoader workers
 DIST_THRESH   = 5.0             #  
@@ -40,7 +40,7 @@ BRIGHTNESS_PROB = 0.5   # 明るさ変換の確率
 BRIGHTNESS_RANGE = (0.6, 1.4) # 明るさ倍率範囲
 SHARPNESS_PROB = 0.5  # シャープネス変換の確率
 SHARPNESS_RANGE = (0.6, 1.4) # シャープネス倍率範囲
-NOIZ_PROB  =  0.5  #ノイズ付加確率
+NOIZ_PROB  =  0  #ノイズ付加確率
 NOIZ_MU  = 0
 NOIZ_SIGMA = 10
 BLUR_PROB = 0.5
@@ -50,6 +50,8 @@ SAVE_INPUT_IMG = True  # Trueで保存、Falseで保存しない
 INPUT_IMG_DIR = r'log/input_img'  # 保存先ディレクトリ名
 
 # ゲート存在判定の損失重み
-GATE_EXIST_LOSS_WEIGHT = 1.0  # 必要に応じて調整
+GATE_EXIST_LOSS_WEIGHT = 1.0  
+# point存在確率の損失重み
+POINT_EXISTS_LOSS_WEIGHT = 4.0    #*ポイントは４つだから、×4にしてる。
 # ゲート存在判定の閾値
 GATE_EXIST_THRESH = 0.5

@@ -58,48 +58,26 @@ class LabelMeCornerDataset(Dataset):
 
     def __init__(self, json_paths, img_dir, input_size=INPUT_SIZE, transforms=None, is_train=False):
         self.items = []
-        self.img_dir = img_dir
-
-        # --- ▼▼▼ ここからロジックを修正 ▼▼▼ ---
-
-        # 1. 対応するJSONを高速に検索できるよう、ファイル名をキーにした辞書を作成
-        # (例: {"image01": "/path/to/json/image01.json", ...})
-        json_map = {os.path.splitext(os.path.basename(jp))[0]: jp for jp in json_paths} if json_paths else {}
-
-        # 2. 「画像フォルダ」を基準に、すべての画像ファイルをリストアップ
-        img_files = sorted([f for f in os.listdir(self.img_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
-
-        print(f"全画像ファイル数: {len(img_files)}件。対応するJSONを探します...")
-
-        # 3. 各画像ファイルに対してループ処理
-        for img_filename in img_files:
-            img_basename = os.path.splitext(img_filename)[0]
-            pts_map = {}  # 座標情報（デフォルトは空）
-
-            # 4. 画像に対応するJSONが辞書に存在するかチェック
-            if img_basename in json_map:
-                # --- JSONが存在する場合 ---
-                json_path = json_map[img_basename]
+        if json_paths:
+            for jp in json_paths:
                 try:
-                    data = json.load(open(json_path, 'r'))
-                    # 座標情報を読み込む
+                    data = json.load(open(jp, 'r'))
+                    pts_map = {}
                     for shape in data['shapes']:
                         if shape.get('shape_type') == 'point':
                             lbl = shape.get('label')
                             if lbl in self.REQUIRED_LABELS:
                                 pts_map[lbl] = shape['points'][0]
+                    self.items.append({'image': data['imagePath'], 'pts': pts_map})
                 except Exception as e:
-                    logger.error(f"JSON load fail {json_path}: {e}")
-                    # JSON読み込み失敗時は、pts_mapは空のまま
-            
-            # --- JSONの有無にかかわらず、全画像をitemsに追加 ---
-            # JSONがなかった画像は、pts_mapが空のまま追加される
-            self.items.append({'image': img_filename, 'pts': pts_map})
-        
-        # --- ▲▲▲ ここまでロジックを修正 ▲▲▲ ---
-
-        print(f"データセットの総数: {len(self.items)}件 (JSONあり/なし含む)")
-
+                    logger.error(f"JSON load fail {jp}: {e}")
+        else:
+            # jsonがない場合: img_dir内の画像を全てitemsに追加（ptsは空dict）
+            img_files = sorted([f for f in os.listdir(img_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
+            print(" # jsonがない場合: img_dir内の画像を全てitemsに追加（ptsは空dict）→ 実行")
+            for imgf in img_files:
+                self.items.append({'image': imgf, 'pts': {}})
+        self.img_dir = img_dir
         self.input_size = input_size
         self.transforms = transforms or T.Compose([
             T.Resize(input_size),
@@ -107,6 +85,9 @@ class LabelMeCornerDataset(Dataset):
             T.ToTensor(),
         ])
         self.is_train = is_train
+        print("=== self.items ===")
+        for item in self.items:
+            print(item["image"])
 
     def __len__(self):
         return len(self.items)
@@ -313,7 +294,6 @@ class LabelMeCornerDataset(Dataset):
         point_exists = point_exists.squeeze()
         point_exists = point_exists.tolist()
  
-        #print(f"gate_exist:{gate_exist}")
 
 
         # ファイル名と正解座標を表示
@@ -364,7 +344,7 @@ def train_one_epoch(model, loader, optimizer, device, writer, epoch):
         loss_point_preds = F.binary_cross_entropy_with_logits(point_preds, point_exists )
         loss += loss_point_preds * POINT_EXISTS_LOSS_WEIGHT
         #print(f"loss_point：{loss_point_preds}")
-        
+
         # Backward()
         optimizer.zero_grad(); loss.backward(); optimizer.step()
         running_loss += loss.item() * imgs.size(0)
