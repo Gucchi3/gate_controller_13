@@ -58,26 +58,48 @@ class LabelMeCornerDataset(Dataset):
 
     def __init__(self, json_paths, img_dir, input_size=INPUT_SIZE, transforms=None, is_train=False):
         self.items = []
-        if json_paths:
-            for jp in json_paths:
+        self.img_dir = img_dir
+
+        # --- ▼▼▼ ここからロジックを修正 ▼▼▼ ---
+
+        # 1. 対応するJSONを高速に検索できるよう、ファイル名をキーにした辞書を作成
+        # (例: {"image01": "/path/to/json/image01.json", ...})
+        json_map = {os.path.splitext(os.path.basename(jp))[0]: jp for jp in json_paths} if json_paths else {}
+
+        # 2. 「画像フォルダ」を基準に、すべての画像ファイルをリストアップ
+        img_files = sorted([f for f in os.listdir(self.img_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
+
+        print(f"全画像ファイル数: {len(img_files)}件。対応するJSONを探します...")
+
+        # 3. 各画像ファイルに対してループ処理
+        for img_filename in img_files:
+            img_basename = os.path.splitext(img_filename)[0]
+            pts_map = {}  # 座標情報（デフォルトは空）
+
+            # 4. 画像に対応するJSONが辞書に存在するかチェック
+            if img_basename in json_map:
+                # --- JSONが存在する場合 ---
+                json_path = json_map[img_basename]
                 try:
-                    data = json.load(open(jp, 'r'))
-                    pts_map = {}
+                    data = json.load(open(json_path, 'r'))
+                    # 座標情報を読み込む
                     for shape in data['shapes']:
                         if shape.get('shape_type') == 'point':
                             lbl = shape.get('label')
                             if lbl in self.REQUIRED_LABELS:
                                 pts_map[lbl] = shape['points'][0]
-                    self.items.append({'image': data['imagePath'], 'pts': pts_map})
                 except Exception as e:
-                    logger.error(f"JSON load fail {jp}: {e}")
-        else:
-            # jsonがない場合: img_dir内の画像を全てitemsに追加（ptsは空dict）
-            img_files = sorted([f for f in os.listdir(img_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
-            print(" # jsonがない場合: img_dir内の画像を全てitemsに追加（ptsは空dict）→ 実行")
-            for imgf in img_files:
-                self.items.append({'image': imgf, 'pts': {}})
-        self.img_dir = img_dir
+                    logger.error(f"JSON load fail {json_path}: {e}")
+                    # JSON読み込み失敗時は、pts_mapは空のまま
+            
+            # --- JSONの有無にかかわらず、全画像をitemsに追加 ---
+            # JSONがなかった画像は、pts_mapが空のまま追加される
+            self.items.append({'image': img_filename, 'pts': pts_map})
+        
+        # --- ▲▲▲ ここまでロジックを修正 ▲▲▲ ---
+
+        print(f"データセットの総数: {len(self.items)}件 (JSONあり/なし含む)")
+
         self.input_size = input_size
         self.transforms = transforms or T.Compose([
             T.Resize(input_size),
@@ -152,102 +174,102 @@ class LabelMeCornerDataset(Dataset):
             #! | `pts[[1,2],1]` | 行 1,2 の y 列 → `[yr, yl]`
             #!-----------------------------------------------------------------
 
-            #? augmentations (trainのみ)
-            # !--- 画像拡張系の関数の追加時は要検証!! ---
-            if self.is_train and AUGMENTATION_ENABLED:
-                #? 1. 左右反転
-                if random.random() < FLIP_PROB:
-                    img = img.transpose(Image.FLIP_LEFT_RIGHT)  # --- 画像の反転 ---
-                    pts[:, 0] = w0 - 1 - pts[:, 0]  # --- w0 には 160 が格納されている。画像は 0~159 のため、w0 -1 -pts で反転 ---
-                    # ラベル順序も反転（top, right, left, bottom → top, left, right, bottom）
-                    pts[[1, 3]] = pts[[3, 1]]
-                    #* 20250609 
-                #? 2. 拡大縮小
-                if random.random() < SCALE_PROB:
-                    scale = random.uniform(SCALE_RANGE[0], SCALE_RANGE[1])   # 拡大縮小率をランダムに選択
-                    nw, nh = int(w0 * scale), int(h0 * scale)                # 新しい画像サイズを計算
-                    img = img.resize((nw, nh), resample=Image.BILINEAR)      # 画像をリサイズ（バイリニア補完）
-                    pts = pts * scale                                        # アノテーションも同じ倍率で拡大縮小
+        #? augmentations (trainのみ)
+        # !--- 画像拡張系の関数の追加時は要検証!! ---
+        if self.is_train and AUGMENTATION_ENABLED:
+            #? 1. 左右反転
+            if random.random() < FLIP_PROB:
+                img = img.transpose(Image.FLIP_LEFT_RIGHT)  # --- 画像の反転 ---
+                pts[:, 0] = w0 - 1 - pts[:, 0]  # --- w0 には 160 が格納されている。画像は 0~159 のため、w0 -1 -pts で反転 ---
+                # ラベル順序も反転（top, right, left, bottom → top, left, right, bottom）
+                pts[[1, 3]] = pts[[3, 1]]
+                #* 20250609 
+            #? 2. 拡大縮小
+            if random.random() < SCALE_PROB:
+                scale = random.uniform(SCALE_RANGE[0], SCALE_RANGE[1])   # 拡大縮小率をランダムに選択
+                nw, nh = int(w0 * scale), int(h0 * scale)                # 新しい画像サイズを計算
+                img = img.resize((nw, nh), resample=Image.BILINEAR)      # 画像をリサイズ（バイリニア補完）
+                pts = pts * scale                                        # アノテーションも同じ倍率で拡大縮小
 
-                    # 元サイズに戻す（中央切り出し or パディング）
-                    if scale >= 1.0:
-                        # ── 拡大 → 中央を切り出し ─────────────────────────────
-                        left = (nw - w0) // 2
-                        upper = (nh - h0) // 2
-                        img = img.crop((left, upper, left + w0, upper + h0))
-                        pts = pts - [left, upper]
+                # 元サイズに戻す（中央切り出し or パディング）
+                if scale >= 1.0:
+                    # ── 拡大 → 中央を切り出し ─────────────────────────────
+                    left = (nw - w0) // 2
+                    upper = (nh - h0) // 2
+                    img = img.crop((left, upper, left + w0, upper + h0))
+                    pts = pts - [left, upper]
 
-                        # 画像外に出たキーポイントはマスクを 0 に
-                        oob = (pts[:, 0] < 0) | (pts[:, 0] >= w0) | (pts[:, 1] < 0) | (pts[:, 1] >= h0)
-                        mask_np = np.array(mask, dtype=np.float32).reshape(-1, 2)
-                        mask_np[oob, :] = 0.0
-                        mask = mask_np.flatten().tolist()
-                    else:
-                        # ── 縮小 → ランダム配置（四隅 or 中央） ─────────────────
-                        new_img = Image.new('L', (w0, h0), 0)  # 160×160 の黒背景を用意
+                    # 画像外に出たキーポイントはマスクを 0 に
+                    oob = (pts[:, 0] < 0) | (pts[:, 0] >= w0) | (pts[:, 1] < 0) | (pts[:, 1] >= h0)
+                    mask_np = np.array(mask, dtype=np.float32).reshape(-1, 2)
+                    mask_np[oob, :] = 0.0
+                    mask = mask_np.flatten().tolist()
+                else:
+                    # ── 縮小 → ランダム配置（四隅 or 中央） ─────────────────
+                    new_img = Image.new('L', (w0, h0), 0)  # 160×160 の黒背景を用意
 
-                        # 5 通りからランダムに配置位置 (left, upper) を選択
-                        positions = [
-                            (0, 0),                         # 左上
-                            (w0 - nw, 0),                   # 右上
-                            (0, h0 - nh),                   # 左下
-                            (w0 - nw, h0 - nh),             # 右下
-                            ((w0 - nw) // 2, (h0 - nh) // 2)  # 中央
-                        ]
-                        left, upper = random.choice(positions)
+                    # 5 通りからランダムに配置位置 (left, upper) を選択
+                    positions = [
+                        (0, 0),                         # 左上
+                        (w0 - nw, 0),                   # 右上
+                        (0, h0 - nh),                   # 左下
+                        (w0 - nw, h0 - nh),             # 右下
+                        ((w0 - nw) // 2, (h0 - nh) // 2)  # 中央
+                    ]
+                    left, upper = random.choice(positions)
 
-                        new_img.paste(img, (left, upper))  # リサイズ済み画像を貼り付け
-                        img = new_img
-                        pts = pts + [left, upper]  # アノテーションをシフト
+                    new_img.paste(img, (left, upper))  # リサイズ済み画像を貼り付け
+                    img = new_img
+                    pts = pts + [left, upper]  # アノテーションをシフト
 
-                        # 縮小配置の場合、画像外に出ることは無いのでマスク更新不要                
-                #? 3. ランダム回転
-                if random.random() < ROTATE_PROB:
-                    angle = random.uniform(-ROTATE_DEGREE, ROTATE_DEGREE)  # 回転角をランダムに決定
-                    img = img.rotate(angle, resample=Image.BILINEAR)  # 画像回転、バイリニア補完
-                    #!==Pillowは画像の左上を中心として、Θ>0の時に「「「時計回り」」」に回転する。
-                            #!===しかし、Pillowではなく数学的に回転させると、画像の左下を中心として、「「「反時計回り」」」に回転する。
-                                #!===よって、Pillowと数学的回転では回転方向が違うため、angleに×(-1)をかけて逆方向の角度を指定しなければならない。
-                    # 座標も回転
-                    cx, cy = w0 / 2, h0 / 2
-                    angle_r = math.radians(-angle)#!×(-1)に注意!!!
-                    #print(f"angle：{angle}　　angle_rad：{angle_r}") #DEBUG
-                    x0 = pts[:, 0] - cx
-                    y0 = pts[:, 1] - cy
-                    pts[:, 0] =  cx +(x0)*math.cos(angle_r) - (y0)*math.sin(angle_r)
-                    pts[:, 1] = cy + (x0)*math.sin(angle_r) + (y0)*math.cos(angle_r)
+                    # 縮小配置の場合、画像外に出ることは無いのでマスク更新不要                
+            #? 3. ランダム回転
+            if random.random() < ROTATE_PROB:
+                angle = random.uniform(-ROTATE_DEGREE, ROTATE_DEGREE)  # 回転角をランダムに決定
+                img = img.rotate(angle, resample=Image.BILINEAR)  # 画像回転、バイリニア補完
+                #!==Pillowは画像の左上を中心として、Θ>0の時に「「「時計回り」」」に回転する。
+                        #!===しかし、Pillowではなく数学的に回転させると、画像の左下を中心として、「「「反時計回り」」」に回転する。
+                            #!===よって、Pillowと数学的回転では回転方向が違うため、angleに×(-1)をかけて逆方向の角度を指定しなければならない。
+                # 座標も回転
+                cx, cy = w0 / 2, h0 / 2
+                angle_r = math.radians(-angle)#!×(-1)に注意!!!
+                #print(f"angle：{angle}　　angle_rad：{angle_r}") #DEBUG
+                x0 = pts[:, 0] - cx
+                y0 = pts[:, 1] - cy
+                pts[:, 0] =  cx +(x0)*math.cos(angle_r) - (y0)*math.sin(angle_r)
+                pts[:, 1] = cy + (x0)*math.sin(angle_r) + (y0)*math.cos(angle_r)
 
-                    # for i ,(x, y) in enumerate(pts): #maskは__getitemの最後で定義してた(*´ω｀*)
-                    #     if x < 0 or input_size <= x:
-                    #         mask[i, 0] = 0
-                    #     if y < 0 or input_size <= y:(*´ω｀*)
-                    #         mask[i, 1] =  
-                #? 4. コントラスト変換
-                if random.random() < CONTRAST_PROB:
-                    from PIL import ImageEnhance
-                    factor = random.uniform(CONTRAST_RANGE[0], CONTRAST_RANGE[1])
-                    img = ImageEnhance.Contrast(img).enhance(factor)  # コントラスト変換
-                #? 5. 明るさ変換
-                if random.random() < BRIGHTNESS_PROB:
-                    from PIL import ImageEnhance
-                    factor = random.uniform(BRIGHTNESS_RANGE[0], BRIGHTNESS_RANGE[1])
-                    img = ImageEnhance.Brightness(img).enhance(factor)  # 明るさ変換
-                #? 6. シャープネス変換
-                if random.random() < SHARPNESS_PROB:
-                    from PIL import ImageEnhance
-                    factor = random.uniform(SHARPNESS_RANGE[0], SHARPNESS_RANGE[1])
-                    img = ImageEnhance.Sharpness(img).enhance(factor)  # シャープネス変換
-                #? 7. ノイズ付加
-                if random.random() < NOIZ_PROB:
-                    img_np = np.array(img).astype(np.float32)
-                    noise = np.random.normal(NOIZ_MU, NOIZ_SIGMA, img_np.shape)
-                    img_np = img_np + noise
-                    img_np = np.clip(img_np, 0, 255).astype(np.uint8)
-                    img = Image.fromarray(img_np)
-                #? ブラー付加
-                from PIL import ImageFilter
-                if random.random() < BLUR_PROB:
-                    img = img.filter(ImageFilter.SMOOTH)
+                # for i ,(x, y) in enumerate(pts): #maskは__getitemの最後で定義してた(*´ω｀*)
+                #     if x < 0 or input_size <= x:
+                #         mask[i, 0] = 0
+                #     if y < 0 or input_size <= y:(*´ω｀*)
+                #         mask[i, 1] =  
+            #? 4. コントラスト変換
+            if random.random() < CONTRAST_PROB:
+                from PIL import ImageEnhance
+                factor = random.uniform(CONTRAST_RANGE[0], CONTRAST_RANGE[1])
+                img = ImageEnhance.Contrast(img).enhance(factor)  # コントラスト変換
+            #? 5. 明るさ変換
+            if random.random() < BRIGHTNESS_PROB:
+                from PIL import ImageEnhance
+                factor = random.uniform(BRIGHTNESS_RANGE[0], BRIGHTNESS_RANGE[1])
+                img = ImageEnhance.Brightness(img).enhance(factor)  # 明るさ変換
+            #? 6. シャープネス変換
+            if random.random() < SHARPNESS_PROB:
+                from PIL import ImageEnhance
+                factor = random.uniform(SHARPNESS_RANGE[0], SHARPNESS_RANGE[1])
+                img = ImageEnhance.Sharpness(img).enhance(factor)  # シャープネス変換
+            #? 7. ノイズ付加
+            if random.random() < NOIZ_PROB:
+                img_np = np.array(img).astype(np.float32)
+                noise = np.random.normal(NOIZ_MU, NOIZ_SIGMA, img_np.shape)
+                img_np = img_np + noise
+                img_np = np.clip(img_np, 0, 255).astype(np.uint8)
+                img = Image.fromarray(img_np)
+            #? ブラー付加
+            from PIL import ImageFilter
+            if random.random() < BLUR_PROB:
+                img = img.filter(ImageFilter.SMOOTH)
 
                     
 
@@ -331,19 +353,22 @@ def train_one_epoch(model, loader, optimizer, device, writer, epoch):
         # 座標損失
         loss_coords = F.smooth_l1_loss(preds * masks, targets * masks, reduction='sum') / (masks.sum() + 1e-6)
         loss_coords = input_size * loss_coords#160*loss_coords
+        #print(f"loss_coords：{loss_coords}")
 
         # ゲート存在損失
         loss_gate = F.binary_cross_entropy_with_logits(gate_logits.squeeze(), gate_exists)
         loss = 4 * loss_coords + GATE_EXIST_LOSS_WEIGHT  * loss_gate
+        #print(f"loss_gate：{loss_gate}")
 
         # point_preds_loss
         loss_point_preds = F.binary_cross_entropy_with_logits(point_preds, point_exists )
         loss += loss_point_preds * POINT_EXISTS_LOSS_WEIGHT
-
+        #print(f"loss_point：{loss_point_preds}")
+        
         # Backward()
         optimizer.zero_grad(); loss.backward(); optimizer.step()
         running_loss += loss.item() * imgs.size(0)
-
+        
     avg = running_loss / len(loader.dataset)
     writer.add_scalar('Loss/train', avg, epoch)
     return avg
