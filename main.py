@@ -335,11 +335,11 @@ def train_one_epoch(model, loader, optimizer, device, writer, epoch):
     img_save_count = 0
     from config import GATE_EXIST_LOSS_WEIGHT
     for imgs, targets, masks, gate_exists, point_exists in tqdm(loader, desc=f"Epoch {epoch} Train", leave=False):
-        imgs, targets, masks, gate_exists = imgs.to(device), targets.to(device), masks.to(device), gate_exists.to(device)
+        imgs, targets, masks, gate_exists, point_exists = imgs.to(device), targets.to(device), masks.to(device), gate_exists.to(device), point_exists.to(device)
         out = model(imgs)  # [B, 9]
         preds = out[:, :8]  # [B,8] 4点座標
         gate_logits = out[:, 8]  # [B] ゲート存在logit
-        point_preds = out[:, 8:12]
+        point_preds = out[:, 9:13]
        # print(f"gate_logits:{torch.sigmoid(gate_logits)}") #DEBUG
                 # --- バッチの一部をプリントしてみる ---
         # if epoch==1 or not printed:
@@ -379,15 +379,18 @@ def validate(model, loader, device, writer, epoch, tag='val'):
     running_loss = 0.0
     from config import GATE_EXIST_LOSS_WEIGHT
     with torch.no_grad():
-        for imgs, targets, masks, gate_exists in tqdm(loader, desc=f"{tag} {epoch}", leave=False):
-            imgs, targets, masks, gate_exists = imgs.to(device), targets.to(device), masks.to(device), gate_exists.to(device)
+        for imgs, targets, masks, gate_exists, point_exists in tqdm(loader, desc=f"{tag} {epoch}", leave=False):
+            imgs, targets, masks, gate_exists, point_exists = imgs.to(device), targets.to(device), masks.to(device), gate_exists.to(device), point_exists.to(device)
             out = model(imgs)  # [B, 9]
             preds = out[:, :8]  # [B,8]
             gate_logits = out[:, 8]  # [B]
+            point_preds = out[:, 9:13]
             loss_coords = F.smooth_l1_loss(preds * masks, targets * masks, reduction='sum') / (masks.sum() + 1e-6)
             loss_coords = input_size * loss_coords
             loss_gate = F.binary_cross_entropy_with_logits(gate_logits.squeeze(), gate_exists)
             loss = 4*loss_coords + GATE_EXIST_LOSS_WEIGHT * loss_gate
+            loss_point = F.binary_cross_entropy_with_logits(point_preds, point_exists)
+            loss += loss_point * 4
             running_loss += loss.item() * imgs.size(0)
     avg = running_loss / len(loader.dataset)
     writer.add_scalar(f'Loss/{tag}', avg, epoch)

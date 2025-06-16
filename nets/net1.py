@@ -41,7 +41,7 @@ class net1_ex(nn.Module):
         self.relu4b = nn.ReLU(inplace=True)
         self.pool4 = nn.MaxPool2d(2)  # 20 -> 10
 
-        self.fc = nn.Linear(10*10*48, 9)  # 1x9
+        self.fc = nn.Linear(10*10*48, 13)  # 1x9
 
     def forward(self, x):
         # conv1ブロック

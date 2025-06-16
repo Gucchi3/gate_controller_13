@@ -52,7 +52,7 @@ def mean_error(model, loader, device):
     point_labels = POINT_LABEL
     point_errors = {lbl: [] for lbl in point_labels}
     with torch.no_grad():
-        for imgs, targets, masks, gate_exists in loader:#!エラーの平均値にゲート存在確率は含まない
+        for imgs, targets, masks,_,_ in loader:#!エラーの平均値にゲート存在確率は含まない
             imgs, targets, masks = imgs.to(device), targets.to(device), masks.to(device)
             out = model(imgs)  # [B,9]
             preds = out[:, :8].cpu().numpy()  # [B,8]
@@ -93,7 +93,7 @@ def plot_heatmap(model, loader, device, session_dir):
     point_labels = POINT_LABEL
     point_errors = {lbl: [] for lbl in point_labels}
     with torch.no_grad():
-        for imgs, targets, masks, gate_exists in loader:
+        for imgs, targets, masks, _, _ in loader:
             imgs, targets, masks = imgs.to(device), targets.to(device), masks.to(device)
             out = model(imgs)
             preds = out[:, :8].cpu().numpy()
@@ -386,9 +386,8 @@ def worker_init_fn(worker_id, rank=0, seed=42):
 # 入力: batch(list[tuple[Tensor, Tensor, Tensor]])
 # 出力: (imgs(torch.Tensor), pts(torch.Tensor), masks(torch.Tensor))
 def yolo_dataset_collate(batch):
-    # 画像, 座標, マスク, ゲート存在ラベルをバッチ化
-    imgs, pts, masks, gate_exists = zip(*batch)
-    return torch.stack(imgs), torch.stack(pts), torch.stack(masks), torch.stack(gate_exists)
+    imgs, pts, masks, gate_exists, point_exists = zip(*batch)
+    return torch.stack(imgs), torch.stack(pts), torch.stack(masks), torch.stack(gate_exists), torch.stack(point_exists)
 
 def heatmap(model, image, save_file_name, target_layer):
     import torch.nn.functional as F
