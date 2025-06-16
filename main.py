@@ -327,17 +327,7 @@ def train_one_epoch(model, loader, optimizer, device, writer, epoch):
         gate_logits = out[:, 8]  # [B] ゲート存在logit
         point_preds = out[:, 9:13]
 
-       # print(f"gate_logits:{torch.sigmoid(gate_logits)}") #DEBUG
-                # --- バッチの一部をプリントしてみる ---
-        # if epoch==1 or not printed:
-        #     print("\n=== Debug: Epoch 1, Batch 1 の preds と targets (最初の1サンプルだけ) ===")
-        #     print("preds[0]:", preds[0].detach().cpu().numpy().round(3))
-        #     print("target[0]:", (targets[0] * masks[0]).detach().cpu().numpy().round(3), "(mask をかけた座標)")
-        #     print("mask[0] :", masks[0].detach().cpu().numpy())
-        #     print("gate_exists[0]:", gate_exists[0].item())
-        #     printed=True
-            
-  
+
         # 座標損失
         loss_coords = F.smooth_l1_loss(preds * masks, targets * masks, reduction='sum') / (masks.sum() + 1e-6)
         loss_coords = input_size * loss_coords#160*loss_coords
@@ -347,7 +337,7 @@ def train_one_epoch(model, loader, optimizer, device, writer, epoch):
         loss = 4 * loss_coords + GATE_EXIST_LOSS_WEIGHT  * loss_gate
 
         # point_preds_loss
-        loss_point_preds = F.binary_cross_entropy_with_logits(point_preds.squeeze(), point_exists )
+        loss_point_preds = F.binary_cross_entropy_with_logits(point_preds, point_exists )
         loss += loss_point_preds * POINT_EXISTS_LOSS_WEIGHT
 
         # Backward()
