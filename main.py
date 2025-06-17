@@ -419,6 +419,23 @@ def main():
         if __name__ == '__main__':
             summary(model, input_size=(1, 1, 160, 160), device=device)
 
+        # --jsonファイルがない画像に対し、jsonファイルを作成--
+    img_files = [f for f in os.listdir(DATASET_DIR) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+    img_basenames = set(os.path.splitext(f)[0] for f in img_files)
+    json_files = [f for f in os.listdir(JSON_DIR) if f.lower().endswith('.json')]
+    json_basenames = set(os.path.splitext(f)[0] for f in json_files)
+    no_json_images = img_basenames - json_basenames
+    import json
+    for image in no_json_images:
+        data = {
+            "imagePath":image + ".jpg",
+            "shapes":[]
+        }
+        save_dir = JSON_DIR
+        os.makedirs(save_dir, exist_ok=True)
+        file_path = os.path.join(save_dir,f"{image}.json")
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(data, f ,indent=2)
 
     if mode == '1':
         metric_epochs   = []   
